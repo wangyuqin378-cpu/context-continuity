@@ -1,0 +1,47 @@
+{
+  "schema": "context-continuity/public-evaluation/v1",
+  "release": "v2.0.0",
+  "third_party_audit": false,
+  "evidence_classes": {
+    "publicly_reproducible": {
+      "deterministic_tests": {
+        "passed": 127,
+        "total": 127,
+        "command": "python3 -m unittest discover -s tests -p 'test_*.py'"
+      },
+      "python_compile": {
+        "passed": true,
+        "command": "python3 -m py_compile scripts/checkpoint_guard.py scripts/contextctl.py"
+      },
+      "recovery_protocol": "evals/README.md",
+      "fixture": "evals/fixtures/long-task-source.md",
+      "ground_truth": "evals/fixtures/ground-truth.json",
+      "scorer": "evals/score_handoff.py"
+    },
+    "frozen_internal": {
+      "third_party": false,
+      "model_version_fully_frozen": false,
+      "sampling_parameters_fully_frozen": false,
+      "raw_generated_outputs_public": false,
+      "raw_output_exclusion_reason": "environment-specific absolute paths and runtime metadata",
+      "baseline_first_pass_recovery": "0/3",
+      "accepted_v2_first_pass_recovery": "3/3",
+      "baseline_mean_protected_fact_recall_percent": 92.3,
+      "accepted_v2_mean_protected_fact_recall_percent": 100.0,
+      "accepted_active_card_id_recovery": "3/3 with 90/90 IDs per reader",
+      "accepted_unsupported_facts": 0,
+      "internal_terminal_attack_matrix": "91/91",
+      "internal_closeout_findings": {
+        "P0": 0,
+        "P1": 0,
+        "P2": 0
+      }
+    }
+  },
+  "severity_definitions": {
+    "P0": "release-blocking integrity or safety bypass",
+    "P1": "substantial functional, security, or operator-routing failure that undermines a declared gate",
+    "P2": "lower-severity usability or documentation defect"
+  },
+  "independent_definition": "a separate reader or attack pass outside the primary implementation path, not organizational or third-party independence"
+}

@@ -1,0 +1,15 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.continuity/
+**/.continuity/
+.venv/
+evals/outputs/
+
+# The local workbench keeps every iteration. The public repository keeps the
+# reproducible protocol and final bounded report, without draft evaluation noise.
+evals/*.md
+!evals/README.md

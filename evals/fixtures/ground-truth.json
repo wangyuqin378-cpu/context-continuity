@@ -1,0 +1,29 @@
+{
+  "source": "long-task-source.md",
+  "facts": [
+    {"id": "G001", "anchors": ["webhook retry", "resume"]},
+    {"id": "I002", "anchors": ["src/webhook.py", "tests/test_webhook_retry.py"]},
+    {"id": "O001", "anchors": ["admin dashboard", "billing"]},
+    {"id": "S002", "anchors": ["450 ms", "three consecutive", "zero retry-state errors"]},
+    {"id": "C002", "anchors": ["18080"]},
+    {"id": "D003", "anchors": ["Postgres", "bounded exponential backoff", "3 attempts"]},
+    {"id": "W004", "anchors": ["canonical", "payload", "17aa", "17ab"]},
+    {"id": "E003", "anchors": ["evidence/run-17.json#summary"]},
+    {"id": "B002", "anchors": ["security approval", "invent", "rotate"]},
+    {"id": "F002", "anchors": ["OOM-KILL-137", "focused retry tests"]},
+    {"id": "A001", "anchors": ["unknown", "credential", "rotated"]},
+    {"id": "NEXT", "anchors": ["NEXT-VERIFY-PAYLOAD-17", "src/webhook.py"]},
+    {"id": "VERIFY", "anchors": ["VERIFY-3X-450MS", "18080", "450 ms"]}
+  ],
+  "required_transitions": [
+    {"from": "C001", "to": "C002"},
+    {"from": "S001", "to": "S002"},
+    {"from": "D001", "to": "D003"}
+  ],
+  "noise_tokens": ["NOISE-ALPHA", "NOISE-BETA", "NOISE-GAMMA", "NOISE-DELTA"],
+  "thresholds": {
+    "fact_recall": 1.0,
+    "noise_count": 0,
+    "minimum_compression": 0.30
+  }
+}
