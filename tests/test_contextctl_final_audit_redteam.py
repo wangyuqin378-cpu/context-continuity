@@ -77,6 +77,15 @@ class ContextctlFinalAuditRedTeamTests(unittest.TestCase):
     def tearDown(self):
         self.temporary.cleanup()
 
+    def test_canonical_root_mismatch_routes_to_safe_migration(self):
+        code, next_step = contextctl_module.error_code(
+            "resume", "review belongs to a different canonical task root"
+        )
+
+        self.assertEqual("CTX304", code)
+        self.assertIn("copied or moved", next_step)
+        self.assertIn("new task ID", next_step)
+
     def run_contextctl(self, *args):
         return subprocess.run(
             [sys.executable, str(CONTEXTCTL)] + [str(arg) for arg in args],
@@ -934,7 +943,7 @@ class ContextctlFinalAuditRedTeamTests(unittest.TestCase):
         self.assertEqual("READY", payload["readiness"])
         self.assertEqual("MISSING", payload["source"]["status"])
         self.assertTrue(payload["source"]["historical"])
-        self.assertIn("SOURCE: HISTORICAL MISSING", human.stdout)
+        self.assertIn("HEALTH: source=HISTORICAL MISSING", human.stdout)
         doctor_payload = json.loads(doctor.stdout)
         self.assertEqual("READY", doctor_payload["readiness"])
         self.assertTrue(doctor_payload["checks"]["source"]["historical"])

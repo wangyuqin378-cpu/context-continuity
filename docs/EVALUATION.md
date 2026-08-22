@@ -63,7 +63,7 @@ The accepted development run produced:
 | Measure | Baseline | Accepted V2 |
 |---|---:|---:|
 | Exposed recovery path | Multiple commands and manual reading | One `resume` command |
-| Default operator view | About 77 lines | 23-line active / 22-line terminal card |
+| Full cold-start operator view | About 77 lines | 23-line active / 22-line terminal card |
 | Free-form/current-card first-pass recovery | 0/3 | 3/3 |
 | Mean protected-fact recall | 92.3% | 100% |
 | Feedback cycles across three readers | 5 | 0 |

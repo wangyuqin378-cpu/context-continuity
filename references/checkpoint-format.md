@@ -137,17 +137,21 @@ workspace_revision: not-available
   a new E### for an accessible source capture, and word every dependent claim as
   “the capture reports …”. The capture does not prove the underlying artifact or
   result. If no capture exists, keep the underlying claim unknown.
-- If a published E### later becomes unavailable, preserve its pair in A###, add
-  any capture under a new E###, downgrade dependent claims, and record
-  `Compressed or dropped: OLD -> NEW — not equivalent evidence`. Never invent or
-  copy a file merely to make reachability pass. Resume/doctor report this as
-  MISSING or CHANGED; create the repair candidate with
+- If a published E### later becomes unavailable, its immutable historical
+  checkpoint already preserves the original pair. Add any current capture under a
+  new E###, downgrade dependent claims, and record `Compressed or dropped: OLD ->
+  NEW — not equivalent evidence`. Copy the old pair into A### only when it still
+  changes an active interpretation; do not carry an inactive provenance ledger in
+  every successor. Never invent or copy a file merely to make reachability pass.
+  Resume/doctor report MISSING or CHANGED; create the repair candidate with
   `contextctl draft <task-dir> --trigger evidence-repair`.
 - For a local OK pointer, review binds canonical path and file SHA-256; any content
   edit after review-init invalidates review-check and publish. External content
   remains inside the explicitly stated reviewer/source trust boundary.
-- The complete checkpoint file must not exceed 128 KiB. Size checks cover words,
-  UTF-8 bytes, Unicode characters, and lines so CJK text cannot bypass the budget.
+- Aim for an active checkpoint at or below 8 KiB and stop to compress at 12 KiB
+  unless exact active contract or safety facts justify the growth. The complete
+  checkpoint file must not exceed 128 KiB. Size checks cover words, UTF-8 bytes,
+  Unicode characters, and lines so CJK text cannot bypass the budget.
 - Prefer `contextctl complete <task-dir>` for the terminal draft. `complete` still
   requires `Next Action`; write exactly `None — task complete.` and
   point its verification section to the final acceptance evidence. The command

@@ -7,14 +7,13 @@
 [![Tests](https://github.com/wangyuqin378-cpu/context-continuity/actions/workflows/test.yml/badge.svg)](https://github.com/wangyuqin378-cpu/context-continuity/actions/workflows/test.yml)
 ![Python requirement](https://img.shields.io/badge/Python-requires%203.9%2B-3776AB?logo=python&logoColor=white)
 ![CI matrix](https://img.shields.io/badge/CI-3.9%20%7C%203.13-2F855A)
-![Release](https://img.shields.io/badge/release-V2%20bounded-5B5BD6)
+![Release](https://img.shields.io/badge/release-V2.1%20lean-5B5BD6)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Context Continuity turns durable task changes into compact, verified,
 append-only Markdown checkpoints. After compaction, interruption, or handoff, a
-fresh agent can resume from one deterministic card containing the current
-contract, decisions, evidence, blockers, one next action, and the exact condition
-for considering that action complete.
+an agent can use a bounded daily card for routine continuation or request the
+complete deterministic contract and evidence view for a cold handoff.
 
 Here, “verified” means that a checkpoint passed the documented local structure,
 evidence-labeling, and review workflow. It does not mean that every claim is
@@ -86,6 +85,15 @@ installation. To update an existing installation:
 git -C ~/.codex/skills/context-continuity pull --ff-only
 ```
 
+If that directory is not a Git checkout, or the CLI exists only under a nested
+`context-continuity/context-continuity/` directory, move the old installation to
+a dated backup and clone the repository directly at the expected path. Do not
+keep two writable copies and guess between them. Verify the result with:
+
+```bash
+python3 ~/.codex/skills/context-continuity/scripts/contextctl.py --version
+```
+
 Continuity files can contain goals, local paths, decisions, and evidence metadata.
 Keep them out of version control unless you have reviewed them for publication:
 
@@ -104,9 +112,10 @@ Workspace root: /absolute/path/to/project
 Checkpoint durable state changes, not every turn.
 ```
 
-The agent should create the initial checkpoint before substantive work, then
-publish a new one at contract changes, accepted decisions, verified phase
-transitions, meaningful failures, pauses, handoffs, and completion.
+The agent should first decide whether continuity is worth its overhead. It should
+create a chain only for durable multi-session or high-cost recovery work, then
+publish at contract changes, accepted decisions, verified phase transitions,
+meaningful failures, pauses, handoffs, and completion—not after every edit or test.
 
 ### 3. Resume later
 
@@ -118,7 +127,8 @@ Use the Resume Card as the recovery entry point. Treat the published checkpoint
 and cited evidence as the source of truth; do not reconstruct the task from old chat.
 ```
 
-The underlying command is:
+For a routine same-contract continuation, the underlying command prints the
+bounded daily view:
 
 ```bash
 SKILL_DIR="$HOME/.codex/skills/context-continuity"
@@ -126,16 +136,27 @@ python3 "$SKILL_DIR/scripts/contextctl.py" resume \
   /absolute/path/to/project/.continuity/webhook-retry
 ```
 
+For a new agent, post-compaction recovery, contract decision, or external
+mutation, request the complete cold-start view:
+
+```bash
+python3 "$SKILL_DIR/scripts/contextctl.py" resume \
+  /absolute/path/to/project/.continuity/webhook-retry --full
+```
+
 A Resume Card is intentionally compact and action-oriented:
 
 ```text
 READY · webhook-retry · #0007 · ACTIVE
+CHECKPOINT: 0007-phase-verified.md
 GOAL: Make webhook retries idempotent without changing the public API.
-OUTCOME: Retry storage is implemented; staging verification remains.
-DECISIONS: Reuse the existing Postgres RetryStore.
-BLOCKERS: Security approval is required before staging access.
+STATE: verified=2 · open=W004
+ACTIVE IDS: decisions=D003 · blockers=B002
 DO NOW: W004 — reproduce the remaining payload-hash mismatch locally.
 DONE WHEN: Three fixed payloads produce the expected stable hashes.
+HEALTH: source=OK · evidence OK=4 MISSING=0 EXTERNAL=0 UNSAFE=0 CHANGED=0 UNCHECKED=0
+FULL CONTEXT: run `contextctl.py resume <task-dir> --full` before a cold handoff,
+contract decision, or external mutation.
 ```
 
 ## The mental model
@@ -219,7 +240,7 @@ evaluation protocol:
 | Measure | Baseline | Accepted V2 |
 |---|---:|---:|
 | Resume path | Multiple commands and manual reading | One command |
-| Default recovery view | About 77 lines | 22–23 lines |
+| Full cold-recovery view | About 77 lines | 22–23 lines |
 | First-pass cold recovery | 0/3 | 3/3 |
 | Protected-fact recall | 92.3% | 100% |
 | Feedback cycles across three readers | 5 | 0 |
@@ -231,7 +252,10 @@ attempts, reproducible checks, frozen empirical results, and exact claim boundar
 The [evaluation README](evals/README.md) explains how the recovery benchmark is
 scored.
 
-The 127-test suite is publicly reproducible. The model-reader and 91-case numbers
+V2.1 adds a deterministic daily view capped at 12 lines; the frozen cold-reader
+results above continue to apply to `resume --full`, not to the new brief view.
+
+The deterministic suite is publicly reproducible. The model-reader and 91-case numbers
 are frozen internal development results, not a third-party audit; original model
 and sampling metadata were not fully frozen. They provide bounded evidence, not
 universal reliability across every model, host, or production workload.
@@ -242,7 +266,7 @@ Most users should let the agent follow [`SKILL.md`](SKILL.md). For operators and
 integrators, the CLI exposes the full state machine:
 
 ```text
-resume        Audit the chain and render the latest Resume Card
+resume        Audit the chain and render a bounded daily card (`--full` for cold start)
 draft         Create one exclusive candidate checkpoint
 complete      Create a validated terminal candidate
 review-init   Bind a fresh review manifest
@@ -304,9 +328,10 @@ operator documentation. See [CONTRIBUTING.md](CONTRIBUTING.md) and
 
 ## Release status
 
-**V2 bounded release:** every declared local, reproducible implementation,
-recovery, review, security, and operator-UX gate passes. “Bounded” is important:
-the claim is limited to the documented evaluation and trust boundary.
+**V2.1 lean release:** preserves the V2 bounded integrity and cold-recovery path,
+while adding the brief daily projection, activation gate, and safer moved-root
+diagnostics. The frozen model-reader claims apply to `resume --full`; V2.1 does
+not claim that the brief view replaces a full cold handoff.
 
 ## License
 

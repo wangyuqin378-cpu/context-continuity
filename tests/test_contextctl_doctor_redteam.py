@@ -259,6 +259,7 @@ class ContextctlDoctorRedTeamTests(unittest.TestCase):
         tasks = {item["task_id"]: item for item in json.loads(result.stdout)["tasks"]}
         self.assertEqual({"broken-task", "healthy-task"}, set(tasks))
         self.assertEqual("BROKEN", tasks["broken-task"]["readiness"])
+        self.assertIn("frontmatter", tasks["broken-task"]["error"])
         self.assertEqual("READY", tasks["healthy-task"]["readiness"])
         self.assertTrue(task_link.is_symlink())
         self.assertEqual(sentinel_hash, digest(outside_sentinel))
