@@ -7,13 +7,13 @@
 [![Tests](https://github.com/wangyuqin378-cpu/context-continuity/actions/workflows/test.yml/badge.svg)](https://github.com/wangyuqin378-cpu/context-continuity/actions/workflows/test.yml)
 ![Python requirement](https://img.shields.io/badge/Python-requires%203.9%2B-3776AB?logo=python&logoColor=white)
 ![CI matrix](https://img.shields.io/badge/CI-3.9%20%7C%203.13-2F855A)
-![Release](https://img.shields.io/badge/release-V2%20bounded-5B5BD6)
+![Release](https://img.shields.io/badge/release-V2.1%20lean-5B5BD6)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Context Continuity 会把任务中真正需要长期保留的变化，整理成精简、经过验证、
 只追加不覆盖的 Markdown 检查点。当上下文被压缩、会话被中断或任务交给另一个
-Agent 时，新 Agent 可以从一张确定性的恢复卡继续工作。卡片里只保留当前契约、
-决策、证据、阻塞、唯一下一步，以及判断这一步完成的准确条件。
+Agent 时，可以用有边界的日常卡继续执行，也可以在冷启动时读取完整、确定性的
+契约与证据视图。
 
 这里的“经过验证”是指检查点通过了文档规定的本地结构检查、证据标注与评审流程，
 不代表每个事实都已经获得普遍或独立的真实性证明。
@@ -80,6 +80,14 @@ macOS 与 Linux；其他 Agent 宿主中的端到端行为尚未逐一验证。
 git -C ~/.codex/skills/context-continuity pull --ff-only
 ```
 
+如果该目录不是 Git checkout，或者 CLI 只存在于重复嵌套的
+`context-continuity/context-continuity/` 中，请先把旧安装移动到带日期的备份目录，
+再把仓库直接克隆到预期路径。不要保留两个可写副本后靠猜测选择。完成后验证：
+
+```bash
+python3 ~/.codex/skills/context-continuity/scripts/contextctl.py --version
+```
+
 连续性文件可能包含目标、本地路径、决策和证据元数据。除非已经完成发布前审查，
 否则应把它们排除在版本控制之外：
 
@@ -98,8 +106,9 @@ git -C ~/.codex/skills/context-continuity pull --ff-only
 只在长期状态发生变化时建立检查点，不要每轮都建立。
 ```
 
-Agent 应在实质工作开始前创建初始检查点，并在契约变化、决策确认、阶段完成、
-重要失败、暂停、交接和最终完成时发布新的检查点。
+Agent 应先判断 continuity 的收益是否高于维护成本。只有长期、多会话或恢复代价
+高的任务才创建链；此后仅在契约变化、决策确认、阶段完成、重要失败、暂停、交接
+和最终完成时发布，不在每次改文件或跑测试后建立检查点。
 
 ### 3. 在新会话里恢复
 
@@ -109,7 +118,7 @@ Agent 应在实质工作开始前创建初始检查点，并在契约变化、�
 不要根据旧聊天重新拼接任务。
 ```
 
-对应的底层命令是：
+日常在同一契约下继续时，默认命令输出有边界的精简卡：
 
 ```bash
 SKILL_DIR="$HOME/.codex/skills/context-continuity"
@@ -117,16 +126,26 @@ python3 "$SKILL_DIR/scripts/contextctl.py" resume \
   /absolute/path/to/project/.continuity/webhook-retry
 ```
 
+新 Agent、压缩后恢复、契约决策或外部变更前，读取完整冷启动视图：
+
+```bash
+python3 "$SKILL_DIR/scripts/contextctl.py" resume \
+  /absolute/path/to/project/.continuity/webhook-retry --full
+```
+
 恢复卡会刻意保持精简，并直接指向行动：
 
 ```text
 READY · webhook-retry · #0007 · ACTIVE
+CHECKPOINT: 0007-phase-verified.md
 GOAL: 在不改变公开 API 的前提下，让 webhook 重试具备幂等性。
-OUTCOME: 重试存储已实现；还需要完成预发布环境验证。
-DECISIONS: 复用现有的 Postgres RetryStore。
-BLOCKERS: 进入预发布环境前需要安全审批。
+STATE: verified=2 · open=W004
+ACTIVE IDS: decisions=D003 · blockers=B002
 DO NOW: W004 — 在本地复现剩余的 payload hash 不一致。
 DONE WHEN: 三个固定 payload 都得到预期的稳定 hash。
+HEALTH: source=OK · evidence OK=4 MISSING=0 EXTERNAL=0 UNSAFE=0 CHANGED=0 UNCHECKED=0
+FULL CONTEXT: 冷启动交接、契约决策或外部变更前运行
+`contextctl.py resume <task-dir> --full`。
 ```
 
 ## 工作原理
@@ -202,7 +221,7 @@ Resume Card 是为了快速恢复而生成的只读视图。
 | 指标 | 基线 | V2 最终结果 |
 |---|---:|---:|
 | 恢复路径 | 多条命令并手动阅读 | 一条命令 |
-| 默认恢复视图 | 约 77 行 | 22–23 行 |
+| 完整冷启动视图 | 约 77 行 | 22–23 行 |
 | 第一次冷恢复成功率 | 0/3 | 3/3 |
 | 受保护事实召回率 | 92.3% | 100% |
 | 三名读者所需反馈轮数 | 5 | 0 |
@@ -212,7 +231,10 @@ Resume Card 是为了快速恢复而生成的只读视图。
 [公开评测报告](docs/EVALUATION.md)包含评测协议、失败尝试、可复现检查、冻结的
 经验结果和准确声明边界；[评测说明](evals/README.md)解释了恢复效果如何计分。
 
-127 项确定性测试可以在公开仓库复现；模型读者与 91 项攻击矩阵属于冻结的内部
+V2.1 新增了最多 12 行的确定性日常视图；上面的冻结冷启动读者结果继续对应
+`resume --full`，不用于宣称新的精简视图已经完成同等模型评测。
+
+确定性测试可以在公开仓库复现；模型读者与 91 项攻击矩阵属于冻结的内部
 开发结果，不是第三方审计，原始模型和采样参数也没有被完整冻结。这些数据提供
 有边界的证据，但不能证明工具适用于所有模型、宿主环境和真实任务。
 
@@ -222,7 +244,7 @@ Resume Card 是为了快速恢复而生成的只读视图。
 CLI 提供完整状态机：
 
 ```text
-resume        审计任务链并生成最新恢复卡
+resume        审计任务链并生成日常精简卡（冷启动使用 `--full`）
 draft         独占创建一个候选检查点
 complete      创建经过终态校验的完成候选
 review-init   创建并绑定新的评审清单
@@ -278,8 +300,9 @@ python3 -m py_compile scripts/checkpoint_guard.py scripts/contextctl.py
 
 ## 发布状态
 
-**V2 bounded release：** 当前声明范围内的本地实现、恢复、评审、安全和操作者体验
-门槛全部通过。“bounded”非常重要：结论只覆盖已记录的评测与信任边界。
+**V2.1 lean release：** 保留 V2 bounded 的完整性与冷启动路径，同时增加日常精简
+视图、启用门槛和更安全的搬家诊断。冻结的模型读者结论只对应 `resume --full`；
+V2.1 不声称精简视图可以替代完整冷交接。
 
 ## 许可证
 

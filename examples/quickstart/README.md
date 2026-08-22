@@ -76,8 +76,11 @@ The agent runs:
 ```bash
 SKILL_DIR="$HOME/.codex/skills/context-continuity"
 python3 "$SKILL_DIR/scripts/contextctl.py" resume \
-  /absolute/path/to/storefront/.continuity/checkout-timeout
+  /absolute/path/to/storefront/.continuity/checkout-timeout --full
 ```
+
+For routine continuation after the contract is already loaded, omit `--full` to
+use the bounded daily card.
 
 The card should answer, without opening older history:
 

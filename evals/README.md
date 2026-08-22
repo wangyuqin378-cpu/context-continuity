@@ -62,7 +62,7 @@ python3 evals/score_handoff.py \
 
 ## Fixed Resume Card recovery protocol
 
-Give each fresh reader exactly one `contextctl resume <task-dir>` output and no
+Give each fresh reader exactly one `contextctl resume <task-dir> --full` output and no
 checkpoint, source, review, ground truth, or peer answer. Require a concise answer
 with these slots, preserving every stable ID shown by the card:
 

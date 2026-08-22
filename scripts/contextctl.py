@@ -37,6 +37,7 @@ from checkpoint_guard import (
 
 
 SCHEMA = "context-continuity/resume/v1"
+VERSION = "2.1.0"
 REVIEW_SCHEMA_V1 = "context-continuity/review/v1"
 REVIEW_SCHEMA = "context-continuity/review/v2"
 REVIEW_REQUIRED_SCHEMA = "context-continuity/review-required/v1"
@@ -44,6 +45,8 @@ DOCTOR_SCHEMA = "context-continuity/doctor/v1"
 TASK_LIST_SCHEMA = "context-continuity/tasks/v1"
 LOCK_SCHEMA = "context-continuity/lock/v1"
 CARD_LINE_LIMIT = 30
+BRIEF_CARD_LINE_LIMIT = 12
+BRIEF_ATTENTION_LIMIT = 3
 INITIAL_SOURCE_WORDS = 500
 INITIAL_SOURCE_BYTES = 4 * 1024
 MINIMUM_COMPRESSION_BASIS_POINTS = 3000
@@ -702,17 +705,113 @@ def evidence_summary(records: list[dict[str, str | None]], status: str) -> str:
     return join_items(values)
 
 
-def render_card(payload: dict[str, object]) -> str:
-    contract = payload["contract"]
-    assert isinstance(contract, list)
-    status = str(payload["status"])
-    current_label, action_label, verify_label = {
+def status_labels(status: str) -> tuple[str, str | None, str]:
+    return {
         "active": ("CURRENT", "DO NOW", "DONE WHEN"),
         "verifying": ("CURRENT", "VERIFY NOW", "PASS WHEN"),
         "waiting": ("WAITING STATE", "WAITING ON", "RESUME WHEN"),
         "blocked": ("BLOCKED STATE", "BLOCKED ON", "UNBLOCK WHEN"),
         "complete": ("OUTCOME", None, "FINAL EVIDENCE"),
     }[status]
+
+
+def item_ids(items: object, prefixes: str) -> list[str]:
+    if not isinstance(items, list):
+        return []
+    found: list[str] = []
+    for line in items:
+        if not isinstance(line, str):
+            continue
+        for item_id in re.findall(rf"\b[{prefixes}]\d{{3}}\b", line):
+            if item_id not in found:
+                found.append(item_id)
+    return found
+
+
+def evidence_counts(records: object) -> str:
+    if not isinstance(records, list):
+        return "none"
+    statuses = ("OK", "MISSING", "EXTERNAL", "UNSAFE", "CHANGED", "UNCHECKED")
+    counts = {
+        status: sum(
+            1
+            for record in records
+            if isinstance(record, dict) and record.get("status") == status
+        )
+        for status in statuses
+    }
+    return " ".join(f"{status}={counts[status]}" for status in statuses)
+
+
+def render_card(payload: dict[str, object]) -> str:
+    """Render the bounded daily-resume view; full canonical state stays in payload."""
+    contract = payload["contract"]
+    assert isinstance(contract, list)
+    status = str(payload["status"])
+    _, action_label, verify_label = status_labels(status)
+    work_ids = item_ids(payload["current_state"], "W")
+    decision_ids = item_ids(payload["decisions"], "D")
+    blocker_ids = item_ids(payload["blockers"], "B")
+    current_state = payload["current_state"]
+    assert isinstance(current_state, list)
+    verified_count = sum(line.startswith("- Verified:") for line in current_state)
+    working_state = payload["working_state"]
+    assert isinstance(working_state, dict)
+    lines = [
+        f"{payload['readiness']} · {payload['task_id']} · #{int(payload['seq']):04d} · {status.upper()}",
+        f"CHECKPOINT: {payload['checkpoint']}",
+        (
+            "WORKING STATE: clean"
+            if all(value == "ABSENT" for value in working_state.values())
+            else "RUN DOCTOR FIRST: "
+            + ", ".join(f"{key}={value}" for key, value in working_state.items())
+        ),
+        f"GOAL: {join_items(contract_group(contract, 'G'))}",
+        f"STATE: verified={verified_count} · open={','.join(work_ids) or 'none'}",
+        "ACTIVE IDS: "
+        f"decisions={','.join(decision_ids) or 'none'} · "
+        f"blockers={','.join(blocker_ids) or 'none'}",
+    ]
+    if action_label is not None:
+        lines.append(f"{action_label}: {payload['next_action']}")
+    source = payload["source"]
+    assert isinstance(source, dict)
+    source_status = (
+        ("HISTORICAL " if source.get("historical") else "")
+        + str(source["status"])
+    )
+    lines.extend(
+        [
+            f"{verify_label}: {payload['verification']}",
+            f"HEALTH: source={source_status} · evidence {evidence_counts(payload['evidence'])}",
+        ]
+    )
+    warnings = payload["warnings"]
+    assert isinstance(warnings, list)
+    if warnings:
+        visible = warnings[:BRIEF_ATTENTION_LIMIT]
+        remainder = len(warnings) - len(visible)
+        lines.append(
+            "ATTENTION: "
+            + " | ".join(str(value) for value in visible)
+            + (f" | +{remainder} more" if remainder else "")
+        )
+    lines.append(
+        "FULL CONTEXT: run `contextctl.py resume <task-dir> --full` before a cold "
+        "handoff, contract decision, or external mutation."
+    )
+    if len(lines) > BRIEF_CARD_LINE_LIMIT:
+        raise ContextctlError(
+            f"brief resume card needs {len(lines)} lines; limit is {BRIEF_CARD_LINE_LIMIT}"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def render_full_card(payload: dict[str, object]) -> str:
+    contract = payload["contract"]
+    assert isinstance(contract, list)
+    status = str(payload["status"])
+    current_label, action_label, verify_label = status_labels(status)
     lines = [
         f"{payload['readiness']} · {payload['task_id']} · #{int(payload['seq']):04d} · {status.upper()}",
         f"CHECKPOINT: {payload['checkpoint']}",
@@ -1208,11 +1307,14 @@ def initialize_review(
         if canonical_output.is_symlink() or not canonical_output.is_file():
             raise ContextctlError("existing canonical review output is unsafe")
         existing, _ = load_manifest(canonical_output)
-        if existing.get("schema") not in {REVIEW_SCHEMA_V1, REVIEW_SCHEMA} or existing.get(
-            "canonical_task_root"
-        ) != str(task_root):
+        if existing.get("schema") not in {REVIEW_SCHEMA_V1, REVIEW_SCHEMA}:
             raise ContextctlError(
                 "existing canonical review.json is not a review for this task"
+            )
+        if existing.get("canonical_task_root") != str(task_root):
+            raise ContextctlError(
+                "review belongs to a different canonical task root "
+                f"(bound={existing.get('canonical_task_root')}; current={task_root})"
             )
         if not replace_existing:
             raise ContextctlError(
@@ -1336,7 +1438,11 @@ def validate_review_snapshot(
     if manifest.get("source_detected_ids") != expected["source_detected_ids"]:
         raise ContextctlError("source_detected_ids changed after review-init")
     if manifest.get("canonical_task_root") != expected["canonical_task_root"]:
-        raise ContextctlError("review belongs to a different canonical task root")
+        raise ContextctlError(
+            "review belongs to a different canonical task root "
+            f"(bound={manifest.get('canonical_task_root')}; "
+            f"current={expected['canonical_task_root']})"
+        )
     if manifest.get("task_id") != candidate.meta["task_id"] or manifest.get("seq") != candidate.seq:
         raise ContextctlError("review belongs to a different task or sequence")
     actual_hash = sha256_file(candidate.path)
@@ -1967,7 +2073,7 @@ def list_tasks_payload(workspace_root: Path) -> dict[str, object]:
                         "readiness": resume["readiness"],
                     }
                 )
-            except (ContextctlError, GuardError, OSError, UnicodeError, IndexError):
+            except (ContextctlError, GuardError, OSError, UnicodeError, IndexError) as exc:
                 tasks.append(
                     {
                         "task_id": task_root.name,
@@ -1975,6 +2081,7 @@ def list_tasks_payload(workspace_root: Path) -> dict[str, object]:
                         "seq": None,
                         "next_action": "none",
                         "readiness": "BROKEN",
+                        "error": str(exc),
                     }
                 )
     return {
@@ -1987,19 +2094,29 @@ def list_tasks_payload(workspace_root: Path) -> dict[str, object]:
 def render_task_list(payload: dict[str, object]) -> str:
     lines = [f"TASKS · {payload['workspace_root']}"]
     for task in payload["tasks"]:
+        detail = f" · {task['error']}" if task.get("error") else ""
         lines.append(
             f"{task['task_id']} · {task['status']} · #{task['seq']} · "
-            f"{task['readiness']} · {task['next_action']}"
+            f"{task['readiness']} · {task['next_action']}{detail}"
         )
     return "\n".join(lines) + "\n"
 
 
 def parser() -> argparse.ArgumentParser:
     command_parser = argparse.ArgumentParser(description=__doc__)
+    command_parser.add_argument("--version", action="version", version=VERSION)
     commands = command_parser.add_subparsers(dest="command", required=True)
-    resume = commands.add_parser("resume", help="audit and render the latest Resume Card")
+    resume = commands.add_parser(
+        "resume", help="audit and render the latest bounded Resume Card"
+    )
     resume.add_argument("task_root", type=Path)
-    resume.add_argument("--json", action="store_true")
+    resume_view = resume.add_mutually_exclusive_group()
+    resume_view.add_argument("--json", action="store_true")
+    resume_view.add_argument(
+        "--full",
+        action="store_true",
+        help="render the complete cold-start contract, evidence, and risk view",
+    )
     draft = commands.add_parser(
         "draft",
         help="create one exclusive candidate checkpoint",
@@ -2054,6 +2171,11 @@ def parser() -> argparse.ArgumentParser:
 
 def error_code(command: str, message: str) -> tuple[str, str]:
     lowered = message.casefold()
+    if "review belongs to a different canonical task root" in lowered:
+        return (
+            "CTX304",
+            "this chain was copied or moved; keep it read-only and initialize a new task ID in the current workspace, or resume it at the bound canonical root",
+        )
     if "rollback incomplete" in message.casefold():
         return "CTX501", "run doctor and inspect task artifacts before any retry"
     if command == "unlock" or "lock" in message.casefold():
@@ -2144,6 +2266,8 @@ def main() -> int:
             payload = resume_payload(args.task_root)
             if args.json:
                 print(json.dumps(payload, ensure_ascii=False, sort_keys=True, indent=2))
+            elif args.full:
+                print(render_full_card(payload), end="")
             else:
                 print(render_card(payload), end="")
         elif args.command == "draft":

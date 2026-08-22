@@ -6,6 +6,11 @@ The target is higher information density, not mechanical word-count reduction.
 Build the candidate from verified deltas and current source artifacts, then audit
 it against the latest checkpoint. Never summarize the full conversation.
 
+Use 8 KiB as the normal active-capsule target and 12 KiB as a compression stop
+sign. The 128 KiB structural ceiling exists for compatibility with unusually rich
+contracts; it is not an authoring target. A full cold-start view may be larger
+than the default daily card, but neither view justifies retaining inactive history.
+
 For an initial checkpoint replacing a source larger than 500 words or 4 KiB,
 the default gate is at least 30% smaller in both whitespace words and UTF-8 bytes.
 During authorship, target at least 40% smaller in both metrics; the extra margin
@@ -28,7 +33,7 @@ recovery capsule is not an archive.
 | Current State | Keep only current verified milestones and open outcomes; replace completed detail with evidence pointers. |
 | Active Decisions | Keep active decisions and rationale. Move a superseded ID out only when the delta names its successor. |
 | Next Action | Keep exactly one action and one observable verification check. |
-| Evidence | Preserve source-provided E IDs and exact pointers verbatim. Do not repoint them to the chat or source log that mentioned them. Add only pointers needed by active claims. |
+| Evidence | Preserve active source-provided E IDs and exact pointers verbatim. Do not repoint them to the chat or source log that mentioned them. Add only pointers needed by active claims; immutable published history retains inactive provenance. |
 | Blockers / Unknowns | Never silently resolve or convert uncertainty into fact. |
 | Failed Attempts | Keep failures whose repetition would waste time or cause harm; archive irrelevant detail with a reason. |
 | Delta | Explain every addition, change, transition, compression, and any net growth. |
@@ -87,7 +92,9 @@ Compress in this order until the capsule is lean enough to cold-start:
 2. repeated narrative into one verified statement;
 3. detailed completed steps into milestone plus proof;
 4. stale background that does not affect a current decision;
-5. superseded decisions into a successor reference in the delta.
+5. superseded decisions into a successor reference in the delta;
+6. inactive evidence narratives into a transition that points to the replacement
+   or records the downgrade, leaving the original pair in immutable history.
 
 For an initial snapshot, the source log itself is not evidence for every fact.
 Prefer reachable direct evidence already named in the source. When it is
@@ -106,8 +113,10 @@ the new P0 facts. “More detail” is not a sufficient reason.
 
 ## Cold-start rehearsal
 
-Before promotion, give a fresh sub-agent only the candidate when available. If
-sub-agents are unavailable, reread the candidate without relying on chat history.
+Before high-assurance promotion, give a fresh reviewer only the candidate when
+available. For routine local checkpoints, reread the candidate in a clean-room
+self-review without relying on chat history; do not create another agent solely
+for ceremony.
 Use fixed recovery slots rather than asking for a free-form rewritten handoff, and
 do not apply the checkpoint compression threshold to the rehearsal answer.
 The reader must answer all of these without opening older checkpoints:
@@ -120,6 +129,10 @@ The reader must answer all of these without opening older checkpoints:
 
 Any missing or contradictory answer blocks promotion. Repair the candidate,
 rerun the structural guard, and repeat the rehearsal.
+
+After publication, use `resume --full` for a cold-start rehearsal. Plain `resume`
+is the bounded daily view and intentionally exposes IDs, health, the exact next
+action, and verification without replaying the full contract and evidence list.
 
 ## Publish safety
 

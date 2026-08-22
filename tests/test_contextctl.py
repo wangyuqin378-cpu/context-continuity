@@ -104,8 +104,8 @@ class ContextctlResumeTests(unittest.TestCase):
         self.latest = self.task / "checkpoints" / "0002-decision.md"
 
     def test_resume_audits_latest_and_prints_complete_compact_card(self) -> None:
-        first = self.run_contextctl("resume", self.task).stdout
-        second = self.run_contextctl("resume", self.task).stdout
+        first = self.run_contextctl("resume", self.task, "--full").stdout
+        second = self.run_contextctl("resume", self.task, "--full").stdout
 
         self.assertEqual(first, second)
         self.assertTrue(first.startswith("READY "))
@@ -127,6 +127,25 @@ class ContextctlResumeTests(unittest.TestCase):
         ):
             self.assertIn(line, first)
         self.assertLessEqual(len(first.splitlines()), 30)
+
+    def test_resume_defaults_to_a_bounded_daily_card(self) -> None:
+        card = self.run_contextctl("resume", self.task).stdout
+
+        self.assertTrue(card.startswith("READY "))
+        self.assertIn("GOAL:", card)
+        self.assertIn(LATEST_NEXT_ACTION, card)
+        self.assertIn(LATEST_VERIFICATION, card)
+        self.assertIn("ACTIVE IDS:", card)
+        self.assertIn("HEALTH:", card)
+        self.assertIn("resume <task-dir> --full", card)
+        self.assertNotIn("IN SCOPE:", card)
+        self.assertNotIn(LATEST_DECISION, card)
+        self.assertLessEqual(len(card.splitlines()), 12)
+
+    def test_version_reports_the_lean_release(self) -> None:
+        result = self.run_contextctl("--version")
+
+        self.assertEqual("2.1.0", result.stdout.strip())
 
     def test_resume_warns_when_local_evidence_is_missing(self) -> None:
         (self.task / "evidence" / "init.log").unlink()

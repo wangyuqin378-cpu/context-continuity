@@ -9,7 +9,7 @@ network service, or proprietary runtime.
 | Component | Responsibility |
 |---|---|
 | `SKILL.md` | Tells an agent when to checkpoint, resume, repair, and finish |
-| `scripts/contextctl.py` | Provides the low-friction operator state machine and actionable errors |
+| `scripts/contextctl.py` | Provides the low-friction operator state machine, bounded/full recovery projections, and actionable errors |
 | `scripts/checkpoint_guard.py` | Parses checkpoints and enforces continuity, evidence, transition, and publication invariants |
 | `references/checkpoint-format.md` | Defines canonical state, stable IDs, evidence rules, and terminal structure |
 | `references/compaction-gate.md` | Defines comparison, retention, compression, cold-start rehearsal, and publish safety |
@@ -92,6 +92,9 @@ both gates to be satisfied; `EXTERNAL` never means “verified.”
 - Failed or concurrent publication preserves the previous latest state.
 - Completion is monotonic; ordinary work cannot reopen a completed chain.
 - Resume is a projection of canonical state, never a rewritten summary.
+- Plain `resume` exposes a bounded daily projection; `resume --full` exposes every
+  active contract, decision, evidence, blocker, failure, unknown, and transition
+  required by the frozen cold-recovery protocol.
 
 ## Trust boundary
 
