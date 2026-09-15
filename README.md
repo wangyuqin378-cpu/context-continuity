@@ -4,22 +4,17 @@
 
 **Resume long-running agent work without reconstructing the whole conversation.**
 
-[![Tests](https://github.com/wangyuqin378-cpu/context-continuity/actions/workflows/test.yml/badge.svg)](https://github.com/wangyuqin378-cpu/context-continuity/actions/workflows/test.yml)
-![Python requirement](https://img.shields.io/badge/Python-requires%203.9%2B-3776AB?logo=python&logoColor=white)
-![CI matrix](https://img.shields.io/badge/CI-3.9%20%7C%203.13-2F855A)
-![Release](https://img.shields.io/badge/release-V2.1%20lean-5B5BD6)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+**For people running long tasks with Codex or another skill-aware agent.** Save the current goal, decisions, evidence and next step as local checkpoints, then resume after an interruption or handoff.
 
-Context Continuity turns durable task changes into compact, verified,
-append-only Markdown checkpoints. After compaction, interruption, or handoff, a
-an agent can use a bounded daily card for routine continuation or request the
-complete deterministic contract and evidence view for a cold handoff.
+**Available:** [v2.1.0](https://github.com/wangyuqin378-cpu/context-continuity/releases/tag/v2.1.0) · Python 3.9+ · standard library only · [MIT](LICENSE).
 
-Here, “verified” means that a checkpoint passed the documented local structure,
-evidence-labeling, and review workflow. It does not mean that every claim is
-universally or independently proven true.
+**Start here:** [Install and resume a task](#quick-start) · [Complete checkpoint walkthrough](examples/quickstart/README.md).
 
-> This is not a larger context window. It is a safer way to continue.
+```text
+Work → checkpoint durable changes → interrupt → resume from the checkpoint
+```
+
+Local structure and recovery tests are available. A verified checkpoint means it passed the documented structure, evidence-labeling and review workflow; it does not independently prove every claim. See the [evaluation scope](#measured-results) and [trust boundary](#limits-and-trust-boundary).
 
 ## Why this exists
 

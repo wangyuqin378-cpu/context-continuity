@@ -4,21 +4,17 @@
 
 **不必重读整段对话，也能可靠续跑一个长期 Agent 任务。**
 
-[![Tests](https://github.com/wangyuqin378-cpu/context-continuity/actions/workflows/test.yml/badge.svg)](https://github.com/wangyuqin378-cpu/context-continuity/actions/workflows/test.yml)
-![Python requirement](https://img.shields.io/badge/Python-requires%203.9%2B-3776AB?logo=python&logoColor=white)
-![CI matrix](https://img.shields.io/badge/CI-3.9%20%7C%203.13-2F855A)
-![Release](https://img.shields.io/badge/release-V2.1%20lean-5B5BD6)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+**面向使用 Codex 或其他支持 Skill 的 Agent 执行长任务的人。** 把当前目标、决策、证据和下一步保存到本地检查点，在中断或换会话后继续。
 
-Context Continuity 会把任务中真正需要长期保留的变化，整理成精简、经过验证、
-只追加不覆盖的 Markdown 检查点。当上下文被压缩、会话被中断或任务交给另一个
-Agent 时，可以用有边界的日常卡继续执行，也可以在冷启动时读取完整、确定性的
-契约与证据视图。
+**当前版本：** [v2.1.0](https://github.com/wangyuqin378-cpu/context-continuity/releases/tag/v2.1.0) · Python 3.9+ · 仅使用标准库 · [MIT 许可](LICENSE)。
 
-这里的“经过验证”是指检查点通过了文档规定的本地结构检查、证据标注与评审流程，
-不代表每个事实都已经获得普遍或独立的真实性证明。
+**从这里开始：** [安装并恢复任务](#快速开始) · [完整检查点示例](examples/quickstart/README.md)。
 
-> 它不是更大的上下文窗口，而是一种更可靠的继续方式。
+```text
+执行任务 → 保存重要变化 → 中断 → 从检查点恢复
+```
+
+已有本地结构与恢复测试。“经过验证”指通过文档规定的结构、证据标注与评审流程，不代表每个事实都已独立证实。请同时阅读[评测范围](#评测结果)和[信任边界](#能力边界与信任边界)。
 
 ## 为什么需要它
 
